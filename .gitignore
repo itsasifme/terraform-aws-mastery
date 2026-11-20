@@ -25,3 +25,6 @@ terraform.rc
 
 # Plan files
 *.tfplan
+
+# Backend settings (holds the account ID in the bucket name)
+backend.hcl
