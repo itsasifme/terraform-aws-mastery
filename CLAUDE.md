@@ -18,8 +18,9 @@
 | 1. Foundations | ✅ Done (quiz score 2.5/3) |
 | 2. Setup | ✅ Done (Terraform 1.17.2, AWS CLI 2.34.0, IAM user verified on 2026-11-19) |
 | 3. Core workflow and HCL basics | ✅ Done (created S3 bucket in ap-south-1; skipped the tag-change step, saw `~` explained only) |
-| 4. Variables, outputs, locals, data sources | 📖 **In progress** (EC2 code in `ec2/`, not applied yet) |
-| 5–8 | Not started |
+| 4. Variables, outputs, locals, data sources | ✅ Done (EC2 in ec2/ applied and destroyed; quiz not answered yet) |
+| 5. A real AWS network | 📖 **In progress** (code in web-app/, validated, not applied yet) |
+| 6–8 | Not started |
 
 **Folder layout (since 2026-11-20):** one folder per AWS service, each with its own providers, variables, tfvars and state. `s3/` holds the Module 3 bucket (state moved there, so plan should show no changes). `ec2/` holds the Module 4 instance. Run commands inside the service folder. New services get a new folder.
 
