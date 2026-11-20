@@ -95,6 +95,7 @@
 - Use the Registry module `terraform-aws-modules/vpc/aws` with version pinning
 - Environments: workspaces vs separate folders (dev/staging/prod), and `terraform_remote_state`
 - 🛠 Hands-on: refactor Module 5 into a module
+- 🛠 Restructure the repo like my company: `modules/` + `dev/` + `stag/` + `prod/` + `global/` (env first, split by component like network/app, not by AWS service). Replace the current `s3/` and `ec2/` learning folders. Also show `terraform providers lock` for mixed Windows/Mac/Linux teams.
 
 ### Module 8: Pro practices and wrap-up (8 min)
 - `lifecycle` (`create_before_destroy`, `prevent_destroy`, `ignore_changes`), `moved` blocks
