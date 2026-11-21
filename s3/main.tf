@@ -4,7 +4,7 @@ resource "random_id" "bucket_suffix" {
   byte_length = 4
 }
 
-resource "aws_s3_bucket" "demo" {
+resource "aws_s3_bucket" "learning" {
   bucket = "${var.project_name}-${random_id.bucket_suffix.hex}"
 
   # Lets "terraform destroy" delete the bucket even if it has files in it.
