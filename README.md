@@ -4,7 +4,7 @@
 
 Learning Terraform on AWS by building real infrastructure, step by step.
 
-![Terraform](https://img.shields.io/badge/Terraform-%E2%89%A5%201.5-7B42BC?logo=terraform&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-%E2%89%A5%201.11-7B42BC?logo=terraform&logoColor=white)
 ![AWS Provider](https://img.shields.io/badge/AWS%20provider-~%3E%206.0-FF9900?logo=amazonwebservices&logoColor=white)
 ![Region](https://img.shields.io/badge/region-ap--south--1-232F3E)
 ![State](https://img.shields.io/badge/state-S3%20%2B%20lockfile-569A31?logo=amazons3&logoColor=white)
@@ -20,6 +20,7 @@ I started this repo to learn Terraform properly, not just copy snippets. I build
 - [What gets built](#what-gets-built)
 - [Repo layout](#repo-layout)
 - [System design](#system-design)
+- [Setup](#setup)
 - [Quick start](#quick-start)
 - [Notes and decisions](#notes-and-decisions)
 - [Terraform features used](#terraform-features-used)
@@ -178,14 +179,113 @@ flowchart LR
 
 </details>
 
-## Quick start
+## Setup
+
+One-time setup on your machine and in your AWS account. Tested with Terraform 1.17 and AWS CLI 2.34.
+
+### 1. Install Terraform
 
 <details>
-<summary><b>Before you begin: AWS CLI</b></summary>
+<summary><b>Windows</b></summary>
 
 <br>
 
-Install the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and Terraform 1.5 or newer, then:
+```powershell
+winget install Hashicorp.Terraform
+```
+
+</details>
+
+<details>
+<summary><b>macOS</b></summary>
+
+<br>
+
+```bash
+brew tap hashicorp/tap
+brew install hashicorp/tap/terraform
+```
+
+</details>
+
+<details>
+<summary><b>Linux (Ubuntu / Debian)</b></summary>
+
+<br>
+
+```bash
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+```
+
+</details>
+
+Check it:
+
+```bash
+terraform version
+```
+
+You need 1.11 or newer. The state backend uses native S3 locking (`use_lockfile`), which became stable in 1.11.
+
+### 2. Install the AWS CLI
+
+<details>
+<summary><b>Windows</b></summary>
+
+<br>
+
+```powershell
+winget install Amazon.AWSCLI
+```
+
+</details>
+
+<details>
+<summary><b>macOS</b></summary>
+
+<br>
+
+```bash
+brew install awscli
+```
+
+</details>
+
+<details>
+<summary><b>Linux</b></summary>
+
+<br>
+
+```bash
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+unzip awscliv2.zip
+sudo ./aws/install
+```
+
+</details>
+
+Check it:
+
+```bash
+aws --version
+```
+
+### 3. Create an IAM user
+
+Don't use the root account for daily work. Sign in as root once, turn on MFA for it, and create a separate user:
+
+1. Open **IAM → Users → Create user**, for example `terraform-admin`.
+2. Attach permissions. This repo needs S3, VPC and EC2:
+   - `AmazonS3FullAccess`
+   - `AmazonEC2FullAccess` (VPCs, subnets and security groups live under EC2)
+3. Open the user → **Security credentials → Create access key** → choose **Command Line Interface (CLI)**.
+4. Copy the access key and secret. The secret is shown only once.
+
+Never put these keys in a `.tf` file or commit them. In CI, use an IAM role with OIDC instead of keys.
+
+### 4. Connect the CLI to your account
 
 ```bash
 aws configure
@@ -198,17 +298,53 @@ Default region name [None]:   ap-south-1
 Default output format [None]: json
 ```
 
-This writes `~/.aws/credentials` (keys) and `~/.aws/config` (region). Terraform reads the same files, so no keys ever go into the `.tf` files.
+This writes two files in your home folder:
+
+| File | Holds |
+|---|---|
+| `~/.aws/credentials` | access key and secret |
+| `~/.aws/config` | region and output format |
+
+Terraform reads the same files, so nothing else is needed. Check it:
 
 ```bash
-aws sts get-caller-identity    # should print your account ID
+aws sts get-caller-identity
 ```
 
-Use an IAM user that can manage S3, VPC and EC2, not the root account. With more than one account, use a profile: `aws configure --profile tf-mastery` and `export AWS_PROFILE=tf-mastery`.
+You should see your account ID and `arn:aws:iam::<account_id>:user/terraform-admin`.
+
+<details>
+<summary><b>More than one AWS account?</b></summary>
+
+<br>
+
+Give this one its own profile:
+
+```bash
+aws configure --profile tf-mastery
+export AWS_PROFILE=tf-mastery      # PowerShell: $env:AWS_PROFILE = "tf-mastery"
+```
+
+Terraform picks the profile up from `AWS_PROFILE`. Credentials are looked up in this order: environment variables, then `~/.aws/credentials`, then an IAM role.
 
 </details>
 
-The full steps are in each folder's README. In short:
+### 5. Set a budget alert
+
+**Billing → Budgets → Create budget** and pick a monthly cost budget with an email alert. If something is left running by mistake, you hear about it before the bill does.
+
+### 6. Optional: share provider downloads
+
+Every folder downloads its own copy of the AWS provider (close to 800 MB). A shared cache saves the space:
+
+```bash
+mkdir -p ~/.terraform.d/plugin-cache
+echo 'export TF_PLUGIN_CACHE_DIR="$HOME/.terraform.d/plugin-cache"' >> ~/.bashrc
+```
+
+## Quick start
+
+After [setup](#setup), the full steps are in each folder's README. In short:
 
 | Step | Where | Command |
 |---|---|---|
