@@ -20,8 +20,7 @@ I started this repo to learn Terraform properly, not just copy snippets. I build
 - [What gets built](#what-gets-built)
 - [Repo layout](#repo-layout)
 - [System design](#system-design)
-- [Getting started](#getting-started)
-- [Daily use](#daily-use)
+- [Quick start](#quick-start)
 - [Notes and decisions](#notes-and-decisions)
 - [Terraform features used](#terraform-features-used)
 
@@ -67,6 +66,16 @@ Plus one shared S3 bucket in `global/` that stores the state of everything else.
 ```
 
 Each folder is its own Terraform root with its own state. Breaking `app` can't touch `network`, and a plan in one folder only looks at that folder's resources.
+
+**Every folder has its own README** with step-by-step instructions. This page is the summary.
+
+| Folder | README |
+|---|---|
+| `global/state-bootstrap` | [create the state bucket](global/state-bootstrap) |
+| `modules/web-server` | [inputs, outputs, usage](modules/web-server) |
+| `dev`, `stag`, `prod` | [dev](dev) · [stag](stag) · [prod](prod): settings and apply order |
+| `<env>/network` | [dev](dev/network) · [stag](stag/network) · [prod](prod/network) |
+| `<env>/app` | [dev](dev/app) · [stag](stag/app) · [prod](prod/app) |
 
 ## System design
 
@@ -169,25 +178,14 @@ flowchart LR
 
 </details>
 
-## Getting started
+## Quick start
 
 <details>
-<summary><b>What you need</b></summary>
+<summary><b>Before you begin: AWS CLI</b></summary>
 
 <br>
 
-- Terraform 1.5 or newer (I use 1.17)
-- AWS CLI v2
-- An AWS account and an IAM user that can manage S3, VPC and EC2
-
-</details>
-
-<details>
-<summary><b>1. Set up the AWS CLI</b></summary>
-
-<br>
-
-Install it from the [AWS CLI guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), then add your credentials:
+Install the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and Terraform 1.5 or newer, then:
 
 ```bash
 aws configure
@@ -200,104 +198,28 @@ Default region name [None]:   ap-south-1
 Default output format [None]: json
 ```
 
-This writes two files in your home folder:
-
-| File | Holds |
-|---|---|
-| `~/.aws/credentials` | access key and secret |
-| `~/.aws/config` | region and output format |
-
-Check that it works:
+This writes `~/.aws/credentials` (keys) and `~/.aws/config` (region). Terraform reads the same files, so no keys ever go into the `.tf` files.
 
 ```bash
-aws sts get-caller-identity
+aws sts get-caller-identity    # should print your account ID
 ```
 
-You should see your account ID and the ARN of your IAM user. Terraform reads the same credentials, so nothing goes into the `.tf` files.
-
-Use an IAM user, not the root account. It needs permission to manage S3, VPC and EC2.
-
-If you keep more than one AWS account, give this one its own profile:
-
-```bash
-aws configure --profile tf-mastery
-export AWS_PROFILE=tf-mastery
-```
+Use an IAM user that can manage S3, VPC and EC2, not the root account. With more than one account, use a profile: `aws configure --profile tf-mastery` and `export AWS_PROFILE=tf-mastery`.
 
 </details>
 
-<details>
-<summary><b>2. Create the state bucket (one time only)</b></summary>
+The full steps are in each folder's README. In short:
 
-<br>
+| Step | Where | Command |
+|---|---|---|
+| 1. Create the state bucket (once) | [`global/state-bootstrap`](global/state-bootstrap) | `terraform init && terraform apply` |
+| 2. Write `backend.hcl` | same folder | `terraform output -raw backend_hcl > ../../backend.hcl` |
+| 3. Build the network | [`dev/network`](dev/network) | `terraform init -backend-config=../../backend.hcl && terraform apply` |
+| 4. Build the app | [`dev/app`](dev/app) | copy `terraform.tfvars.example`, then same as step 3 |
+| 5. Check it | browser | open the `website_url` output |
+| 6. Clean up | [`dev`](dev) | destroy `app` first, then `network` |
 
-```bash
-cd global/state-bootstrap
-terraform init
-terraform apply
-terraform output -raw backend_hcl > ../../backend.hcl
-```
-
-The bucket name is `<project>-tfstate-<account_id>`, so it's unique per account. It has versioning, encryption and public access blocked.
-
-This folder keeps its state on disk on purpose. It can't store its state in a bucket that doesn't exist yet.
-
-</details>
-
-<details>
-<summary><b>3. Fill in the variables</b></summary>
-
-<br>
-
-```bash
-cp dev/app/terraform.tfvars.example dev/app/terraform.tfvars
-```
-
-Same for `stag/app` and `prod/app` when you need them.
-
-Then set `state_bucket`, and set `ssh_cidr` to your own IP (`curl ifconfig.me`) with `/32` at the end. Remove the `ssh_cidr` line to keep SSH closed.
-
-</details>
-
-## Daily use
-
-<details open>
-<summary><b>Bring up dev</b></summary>
-
-<br>
-
-```bash
-cd dev/network
-terraform init -backend-config=../../backend.hcl
-terraform apply
-
-cd ../app
-terraform init -backend-config=../../backend.hcl
-terraform apply
-```
-
-Open the `website_url` output. You should see:
-
-```
-Hello from a Terraform module!
-Server: terraform-aws-mastery-dev-web
-```
-
-</details>
-
-<details>
-<summary><b>Tear it down</b></summary>
-
-<br>
-
-Always in reverse order. The server sits inside the VPC, so AWS won't delete the VPC while the server is still there.
-
-```bash
-cd dev/app     && terraform destroy
-cd ../network  && terraform destroy
-```
-
-</details>
+Swap `dev` for `stag` or `prod` to work on another environment.
 
 <details>
 <summary><b>Switched the bucket or cloned on a new machine?</b></summary>
