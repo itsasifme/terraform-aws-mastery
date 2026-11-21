@@ -1,0 +1,3 @@
+# Copy to terraform.tfvars (git ignores it).
+state_bucket = "terraform-aws-mastery-tfstate-<ACCOUNT_ID>"
+ssh_cidr     = "x.x.x.x/32" # or remove this line to turn SSH off

@@ -28,7 +28,7 @@ I started this repo to learn Terraform properly, not just copy snippets. Every f
 
 ## What gets built
 
-For each environment (`dev`, `prod`):
+For each environment (`dev`, `stag`, `prod`):
 
 | Component | What's inside | Comes from |
 |---|---|---|
@@ -37,11 +37,13 @@ For each environment (`dev`, `prod`):
 
 Plus one shared S3 bucket in `global/` that stores the state of everything else.
 
-| | dev | prod |
-|---|---|---|
-| VPC CIDR | `10.0.0.0/16` | `10.1.0.0/16` |
-| SSH | open to my IP only | off |
-| Instance | `t3.micro` | `t3.micro` |
+| | dev | stag | prod |
+|---|---|---|---|
+| VPC CIDR | `10.0.0.0/16` | `10.2.0.0/16` | `10.1.0.0/16` |
+| SSH | open to my IP only | off | off |
+| Instance | `t3.micro` | `t3.micro` | `t3.micro` |
+
+`stag` is a copy of `prod` with its own IP range. Changes go dev → stag → prod.
 
 ## Repo layout
 
@@ -54,6 +56,9 @@ Plus one shared S3 bucket in `global/` that stores the state of everything else.
 ├── dev/
 │   ├── network/             # state key: dev/network/terraform.tfstate
 │   └── app/                 # state key: dev/app/terraform.tfstate
+├── stag/
+│   ├── network/
+│   └── app/
 ├── prod/
 │   ├── network/
 │   └── app/
@@ -118,6 +123,8 @@ This folder keeps its state on disk on purpose. It can't store its state in a bu
 ```bash
 cp dev/app/terraform.tfvars.example dev/app/terraform.tfvars
 ```
+
+Same for `stag/app` and `prod/app` when you need them.
 
 Then set `state_bucket`, and set `ssh_cidr` to your own IP (`curl ifconfig.me`) with `/32` at the end. Remove the `ssh_cidr` line to keep SSH closed.
 
