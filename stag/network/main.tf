@@ -6,8 +6,8 @@ module "vpc" {
   name = "terraform-aws-mastery-stag"
   cidr = "10.2.0.0/16"
 
-  azs            = ["ap-south-1a", "ap-south-1b"]
-  public_subnets = ["10.2.1.0/24", "10.2.2.0/24"]
+  azs            = ["ap-south-1a", "ap-south-1b", "ap-south-1c"]
+  public_subnets = ["10.2.1.0/24", "10.2.2.0/24", "10.2.3.0/24"]
 
   map_public_ip_on_launch = true  # servers in public subnets get a public IP
   enable_nat_gateway      = false # NAT costs money, and we have no private subnets

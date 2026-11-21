@@ -32,7 +32,7 @@ For each environment (`dev`, `stag`, `prod`):
 
 | Component | What's inside | Comes from |
 |---|---|---|
-| `network` | VPC, 2 public subnets, internet gateway, route table | [terraform-aws-modules/vpc](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws) |
+| `network` | VPC, 3 public subnets (one per AZ), internet gateway, route table | [terraform-aws-modules/vpc](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws) |
 | `app` | Security group + EC2 running nginx | [`modules/web-server`](modules/web-server) |
 
 Plus one shared S3 bucket in `global/` that stores the state of everything else.
@@ -40,6 +40,7 @@ Plus one shared S3 bucket in `global/` that stores the state of everything else.
 | | dev | stag | prod |
 |---|---|---|---|
 | VPC CIDR | `10.0.0.0/16` | `10.2.0.0/16` | `10.1.0.0/16` |
+| Subnets | `10.0.1-3.0/24` | `10.2.1-3.0/24` | `10.1.1-3.0/24` |
 | SSH | open to my IP only | off | off |
 | Instance | `t3.micro` | `t3.micro` | `t3.micro` |
 
