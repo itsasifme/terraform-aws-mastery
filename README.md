@@ -1,4 +1,4 @@
-# terraform-aws-learning
+# terraform-aws-mastery
 
 My notes and code from learning Terraform on AWS, step by step.
 The repo is laid out the way many real teams do it: environment first, then component.

@@ -14,7 +14,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "terraform-aws-learning"
+      Project     = "terraform-aws-mastery"
       Environment = "dev"
       Component   = "app"
       ManagedBy   = "terraform"

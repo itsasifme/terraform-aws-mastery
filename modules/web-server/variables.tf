@@ -1,5 +1,5 @@
 variable "name" {
-  description = "Prefix for every resource name, e.g. terraform-aws-learning-dev"
+  description = "Prefix for every resource name, e.g. terraform-aws-mastery-dev"
   type        = string
 }
 

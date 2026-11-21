@@ -1,4 +1,4 @@
 # Copy to backend.hcl and fill in your bucket name.
 # Get the exact text from:  cd global/state-bootstrap && terraform output -raw backend_hcl
-bucket = "terraform-aws-learning-tfstate-<ACCOUNT_ID>"
+bucket = "terraform-aws-mastery-tfstate-<ACCOUNT_ID>"
 region = "ap-south-1"

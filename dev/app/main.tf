@@ -14,7 +14,7 @@ data "terraform_remote_state" "network" {
 module "web" {
   source = "../../modules/web-server" # local module: a path, no version
 
-  name          = "terraform-aws-learning-dev"
+  name          = "terraform-aws-mastery-dev"
   vpc_id        = data.terraform_remote_state.network.outputs.vpc_id
   subnet_id     = data.terraform_remote_state.network.outputs.public_subnet_ids[0]
   instance_type = "t3.micro"

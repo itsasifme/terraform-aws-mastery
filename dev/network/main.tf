@@ -3,7 +3,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 6.0" # always pin Registry modules
 
-  name = "terraform-aws-learning-dev"
+  name = "terraform-aws-mastery-dev"
   cidr = "10.0.0.0/16"
 
   azs            = ["ap-south-1a", "ap-south-1b"]
