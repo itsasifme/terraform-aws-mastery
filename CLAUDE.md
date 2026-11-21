@@ -8,7 +8,7 @@
 - Teach **step by step, one module at a time**. Explain the concept, show working code, then give me a small hands-on task or quiz before moving on.
 - I ask a lot of "why" questions about real-world practice (how companies do it). Answer them with analogies and concrete examples, then return to the plan.
 - My team at work already uses: a **Git repo with CI that runs `terraform plan` on PRs and CD that runs `apply` on merge**, plus an **S3 bucket for remote state** that my lead created.
-- Use **AWS Free Tier** resources where possible, and always finish hands-on work with `terraform destroy` so I'm not billed.
+- My AWS account is **paid, not Free Tier**. Still keep resources small (t3.micro, no NAT) and always finish hands-on work with `terraform destroy` to keep the bill low.
 - Since we're in Claude Code: **create the files in this folder and let me run the commands myself** (`init`, `plan`, `apply`, `destroy`), unless I ask you to run them. Explain each plan output with me.
 
 ## Progress so far
@@ -24,7 +24,7 @@
 | 7. Modules | ✅ Done (repo restructured; dev/network + dev/app applied, module page seen in browser, destroyed in reverse order; quiz answers shown, not answered) |
 | 8 | Not started |
 
-**Folder layout (since 2026-11-22, Module 7):** env first, like my company. `modules/web-server/` (reusable SG + EC2). `global/state-bootstrap/` (state bucket, local state). `dev/network` + `dev/app` and `prod/network` + `prod/app`, each with its own S3 state key (`<env>/<component>/terraform.tfstate`). network uses the Registry VPC module; app reads network outputs with terraform_remote_state and calls the local module. Init with `terraform init -backend-config=../../backend.hcl`. Old `s3/` demo was destroyed and deleted. Only dev gets applied; prod is there to compare. Workspaces explained (same code, separate state; S3 key gets `env:/<name>/` prefix; `terraform.workspace` is an expression, not a command).
+**Folder layout (since 2026-11-22, Module 7):** env first, like my company. `modules/web-server/` (reusable SG + EC2). `global/state-bootstrap/` (state bucket, local state). `dev/network` + `dev/app` and `prod/network` + `prod/app`, each with its own S3 state key (`<env>/<component>/terraform.tfstate`). network uses the Registry VPC module; app reads network outputs with terraform_remote_state and calls the local module. Init with `terraform init -backend-config=../../backend.hcl`. Old `s3/` demo was destroyed and deleted. On 2026-11-22 the repo, folder and project prefix were renamed from terraform-aws-learning to **terraform-aws-mastery**; the state bucket was destroyed and recreated as `terraform-aws-mastery-tfstate-149195855103`, and dev folders were re-inited with `-reconfigure`. Only dev gets applied; prod is there to compare. Workspaces explained (same code, separate state; S3 key gets `env:/<name>/` prefix; `terraform.workspace` is an expression, not a command).
 
 ### Concepts I've already learned (don't re-teach, but quick refreshers are fine)
 

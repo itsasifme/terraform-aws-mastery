@@ -20,7 +20,7 @@ variable "instance_type" {
 
   validation {
     condition     = contains(["t3.micro", "t2.micro"], var.instance_type)
-    error_message = "Use a Free Tier size: t3.micro or t2.micro."
+    error_message = "Keep it small to save cost: t3.micro or t2.micro."
   }
 }
 
