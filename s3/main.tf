@@ -16,3 +16,13 @@ resource "aws_s3_bucket" "learning" {
     Environment = "learning"
   }
 }
+
+
+# Created by hand outside Terraform, then imported
+resource "aws_s3_bucket" "imported" {
+  bucket = "terraform-aws-learning-imported-d6e1a945"
+
+  tags = {
+    Name = "imported-bucket"
+  }
+}
