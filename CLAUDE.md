@@ -21,9 +21,10 @@
 | 4. Variables, outputs, locals, data sources | ✅ Done (EC2 in ec2/ applied and destroyed; quiz not answered yet) |
 | 5. A real AWS network | ✅ Done (web-app/ applied, nginx page seen in browser, destroyed; quiz not answered yet) |
 | 6. State management | ✅ Done (state in S3, state list/show, drift with refresh-only, state mv, import block with generate-config-out, removed block; quiz not answered yet) |
-| 7–8 | Not started |
+| 7. Modules | 📖 **In progress** (repo restructured, all folders validated, nothing applied yet) |
+| 8 | Not started |
 
-**Folder layout (since 2026-11-20):** one folder per AWS service, each with its own providers, variables, tfvars and state. `s3/` holds the Module 3 bucket (state moved there, so plan should show no changes). `ec2/` holds the Module 4 instance. Run commands inside the service folder. New services get a new folder.
+**Folder layout (since 2026-11-22, Module 7):** env first, like my company. `modules/web-server/` (reusable SG + EC2). `global/state-bootstrap/` (state bucket, local state). `dev/network` + `dev/app` and `prod/network` + `prod/app`, each with its own S3 state key (`<env>/<component>/terraform.tfstate`). network uses the Registry VPC module; app reads network outputs with terraform_remote_state and calls the local module. Init with `terraform init -backend-config=../../backend.hcl`. Old `s3/` demo folder is waiting for me to destroy it, then delete it. Only dev gets applied; prod is there to compare.
 
 ### Concepts I've already learned (don't re-teach, but quick refreshers are fine)
 

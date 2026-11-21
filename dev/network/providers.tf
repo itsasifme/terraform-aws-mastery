@@ -10,13 +10,14 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = "ap-south-1"
 
   default_tags {
     tags = {
-      Project   = var.project_name
-      Component = "web-app"
-      ManagedBy = "terraform"
+      Project     = "terraform-aws-learning"
+      Environment = "dev"
+      Component   = "network"
+      ManagedBy   = "terraform"
     }
   }
 }

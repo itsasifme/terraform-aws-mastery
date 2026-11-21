@@ -10,14 +10,14 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = "ap-south-1"
 
-  # Added to every AWS resource in this folder.
   default_tags {
     tags = {
-      Project   = var.project_name
-      Service   = "ec2"
-      ManagedBy = "terraform"
+      Project     = "terraform-aws-learning"
+      Environment = "dev"
+      Component   = "app"
+      ManagedBy   = "terraform"
     }
   }
 }
