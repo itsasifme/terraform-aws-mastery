@@ -7,9 +7,9 @@ Used by `dev/app`, `stag/app` and `prod/app`.
 
 | Resource | Notes |
 |---|---|
-| `aws_security_group` | HTTP (80) open to everyone, all outbound traffic allowed |
+| `aws_security_group` | HTTP (80) open to everyone, all outbound allowed. Uses `name_prefix` + `create_before_destroy` so it can be replaced while the server is attached |
 | `aws_vpc_security_group_ingress_rule.ssh` | only when `ssh_cidr` is set |
-| `aws_instance` | latest Amazon Linux 2023, nginx installed by `user_data`, IMDSv2 required |
+| `aws_instance` | latest Amazon Linux 2023 at creation time, nginx installed by `user_data`, IMDSv2 required. New AMIs are ignored (`ignore_changes = [ami]`) |
 
 ## Usage
 

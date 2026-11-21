@@ -11,11 +11,19 @@ data "aws_ami" "amazon_linux" {
 
 # ---------- Security group ----------
 resource "aws_security_group" "this" {
-  name        = "${var.name}-web-sg"
+  # name_prefix, not name: AWS adds a random suffix, so the old and the new
+  # group can exist at the same time during a replacement.
+  name_prefix = "${var.name}-web-"
   description = "Web server: HTTP from anywhere, optional SSH"
   vpc_id      = var.vpc_id
 
   tags = { Name = "${var.name}-web-sg" }
+
+  # The server is still attached to the old group, so AWS refuses to delete it
+  # first. Build the new one, move the server over, then delete the old one.
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "http" {
@@ -67,4 +75,10 @@ resource "aws_instance" "this" {
   }
 
   tags = { Name = "${var.name}-web" }
+
+  # most_recent = true picks a newer AMI every time Amazon publishes one, and a
+  # new AMI means a new server. Ignore it: update the server on purpose instead.
+  lifecycle {
+    ignore_changes = [ami]
+  }
 }

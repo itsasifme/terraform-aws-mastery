@@ -67,5 +67,6 @@ Every environment folder reads it during `terraform init -backend-config=../../b
 ## Be careful
 
 - Changing `project_name` changes the bucket name. S3 buckets can't be renamed, so Terraform will **destroy the bucket and create a new one**, along with every state file inside it.
-- `force_destroy = true` is set so the lab can be cleaned up completely. In a real company this would be `false`, with `lifecycle { prevent_destroy = true }`.
+- The bucket has `lifecycle { prevent_destroy = true }`, so any plan that would delete it fails. To really remove it, delete that block first.
+- `force_destroy = true` is set so the lab can be cleaned up completely at the end. In a real company this would be `false`.
 - Only destroy this after every environment has been destroyed.

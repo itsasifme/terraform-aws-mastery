@@ -5,11 +5,17 @@ data "aws_caller_identity" "current" {}
 resource "aws_s3_bucket" "state" {
   bucket = "${var.project_name}-tfstate-${data.aws_caller_identity.current.account_id}"
 
-  # Lab only, so "destroy" can clean up at the end.
-  # In a real company: false, plus lifecycle { prevent_destroy = true } (Module 8).
+  # Lab only, so the bucket can be emptied and removed at the very end.
+  # In a real company this is false.
   force_destroy = true
 
   tags = { Name = "terraform-state" }
+
+  # Losing this bucket means losing every state file. Terraform refuses any
+  # plan that would delete it. To really remove it, delete this block first.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Keep every old version of each state file. If state gets broken, roll back.
