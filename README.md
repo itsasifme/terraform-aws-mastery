@@ -2,7 +2,7 @@
 
 # terraform-aws-mastery
 
-Learning Terraform on AWS by building real things, one module at a time.
+Learning Terraform on AWS by building real infrastructure, step by step.
 
 ![Terraform](https://img.shields.io/badge/Terraform-%E2%89%A5%201.5-7B42BC?logo=terraform&logoColor=white)
 ![AWS Provider](https://img.shields.io/badge/AWS%20provider-~%3E%206.0-FF9900?logo=amazonwebservices&logoColor=white)
@@ -13,18 +13,17 @@ Learning Terraform on AWS by building real things, one module at a time.
 
 ---
 
-I started this repo to learn Terraform properly, not just copy snippets. Every folder here was planned, applied, checked in the browser and then destroyed. The layout follows what I see at work: environment first, then component, with shared modules on the side.
+I started this repo to learn Terraform properly, not just copy snippets. I build `dev` for real, check it in the browser, then destroy it at the end of each session. `stag` and `prod` run the same code with different settings. The layout follows what I see at work: environment first, then component, with shared modules on the side.
 
 ## Contents
 
 - [What gets built](#what-gets-built)
 - [Repo layout](#repo-layout)
-- [How the pieces connect](#how-the-pieces-connect)
+- [System design](#system-design)
 - [Getting started](#getting-started)
 - [Daily use](#daily-use)
-- [The web-server module](#the-web-server-module)
 - [Notes and decisions](#notes-and-decisions)
-- [Progress](#progress)
+- [Terraform features used](#terraform-features-used)
 
 ## What gets built
 
@@ -33,7 +32,7 @@ For each environment (`dev`, `stag`, `prod`):
 | Component | What's inside | Comes from |
 |---|---|---|
 | `network` | VPC, 3 public subnets (one per AZ), internet gateway, route table | [terraform-aws-modules/vpc](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws) |
-| `app` | Security group + EC2 running nginx | [`modules/web-server`](modules/web-server) |
+| `app` | Security group + EC2 running nginx | [`modules/web-server`](modules/web-server) (inputs and outputs in its README) |
 
 Plus one shared S3 bucket in `global/` that stores the state of everything else.
 
@@ -69,21 +68,106 @@ Plus one shared S3 bucket in `global/` that stores the state of everything else.
 
 Each folder is its own Terraform root with its own state. Breaking `app` can't touch `network`, and a plan in one folder only looks at that folder's resources.
 
-## How the pieces connect
+## System design
+
+### Inside one environment
+
+This is `dev`. `stag` and `prod` look the same with their own IP ranges.
+
+```mermaid
+flowchart TB
+    user(["User / browser"]) -->|HTTP :80| igw
+
+    subgraph region["AWS · ap-south-1 (Mumbai)"]
+        subgraph vpc["VPC 10.0.0.0/16"]
+            igw["Internet Gateway"]
+            rt["Public route table<br/>0.0.0.0/0 → IGW"]
+
+            subgraph aza["AZ ap-south-1a"]
+                s1["Public subnet<br/>10.0.1.0/24"]
+                ec2["EC2 t3.micro · nginx<br/>SG: 80 from anywhere<br/>22 from my IP (dev only)"]
+            end
+            subgraph azb["AZ ap-south-1b"]
+                s2["Public subnet<br/>10.0.2.0/24"]
+            end
+            subgraph azc["AZ ap-south-1c"]
+                s3["Public subnet<br/>10.0.3.0/24"]
+            end
+
+            igw --- rt
+            rt --- s1 & s2 & s3
+            s1 --- ec2
+        end
+    end
+```
+
+The server runs in the first subnet. The other two are ready for when the app grows to more servers behind a load balancer.
+
+### All environments
+
+```mermaid
+flowchart LR
+    subgraph acct["One AWS account · ap-south-1"]
+        dev["dev VPC<br/>10.0.0.0/16<br/>3 subnets + EC2"]
+        stag["stag VPC<br/>10.2.0.0/16<br/>3 subnets + EC2"]
+        prod["prod VPC<br/>10.1.0.0/16<br/>3 subnets + EC2"]
+        bucket[("S3 state bucket<br/>versioned + encrypted")]
+    end
+
+    dev -. state .-> bucket
+    stag -. state .-> bucket
+    prod -. state .-> bucket
+```
+
+The three VPCs are fully separate. No peering, no shared subnets. The IP ranges don't overlap, so they can still be connected later without renumbering anything.
+
+### How Terraform ties it together
 
 ```mermaid
 flowchart LR
     boot["global/state-bootstrap"] -->|creates| bucket[("S3 state bucket")]
 
-    net["dev/network"] -->|writes state| bucket
-    app["dev/app"] -->|writes state| bucket
-    bucket -.->|terraform_remote_state<br/>vpc_id, subnet ids| app
+    subgraph dev["dev"]
+        dnet["network"] -.->|vpc_id, subnet ids| dapp["app"]
+    end
+    subgraph stag["stag"]
+        snet["network"] -.->|vpc_id, subnet ids| sapp["app"]
+    end
+    subgraph prod["prod"]
+        pnet["network"] -.->|vpc_id, subnet ids| papp["app"]
+    end
 
-    app -->|calls| mod["modules/web-server"]
-    net -->|calls| vpc["Registry VPC module"]
+    dev & stag & prod -->|state| bucket
+
+    dnet & snet & pnet -->|call| vpcmod["Registry VPC module"]
+    dapp & sapp & papp -->|call| mod["modules/web-server"]
 ```
 
-`app` never hardcodes a VPC ID. It reads the outputs of the `network` state, so `network` has to exist first.
+- Every environment has the same two folders, `network` and `app`. Only their inputs differ (IP range, SSH on or off).
+- All six folders keep their state in one bucket, each under its own key: `dev/network/terraform.tfstate`, `stag/app/terraform.tfstate` and so on.
+- Inside each environment, `app` reads the `network` outputs through `terraform_remote_state`. It never hardcodes a VPC ID, so `network` has to be applied first.
+- All three networks call the same Registry module, and all three apps call the same `web-server` module. A fix in a module reaches every environment.
+
+### Design choices
+
+| Area | What I did | Why |
+|---|---|---|
+| Isolation | One VPC per environment, separate state per component | a mistake in dev can't reach prod |
+| Availability | Subnets in all 3 AZs | room to spread servers out later |
+| Security | SSH closed in stag and prod, IMDSv2 required, state bucket private and encrypted | smallest possible attack surface |
+| Cost | No NAT gateway, no load balancer, `t3.micro` | keeps the bill close to zero while learning |
+
+<details>
+<summary><b>Known limits (on purpose, for now)</b></summary>
+
+<br>
+
+- One server means one point of failure. The next step would be an Auto Scaling group behind an ALB across all three subnets.
+- Only public subnets. A real app would put servers in private subnets and only expose the load balancer.
+- Plain HTTP. HTTPS needs a domain and an ACM certificate on a load balancer.
+- All environments share one AWS account. Companies usually give each environment its own account.
+
+</details>
 
 ## Getting started
 
@@ -93,13 +177,57 @@ flowchart LR
 <br>
 
 - Terraform 1.5 or newer (I use 1.17)
-- AWS CLI with a working profile: `aws sts get-caller-identity` should print your account
-- An IAM user or role that can manage S3, VPC and EC2
+- AWS CLI v2
+- An AWS account and an IAM user that can manage S3, VPC and EC2
 
 </details>
 
 <details>
-<summary><b>1. Create the state bucket (one time only)</b></summary>
+<summary><b>1. Set up the AWS CLI</b></summary>
+
+<br>
+
+Install it from the [AWS CLI guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), then add your credentials:
+
+```bash
+aws configure
+```
+
+```
+AWS Access Key ID [None]:     <your access key>
+AWS Secret Access Key [None]: <your secret key>
+Default region name [None]:   ap-south-1
+Default output format [None]: json
+```
+
+This writes two files in your home folder:
+
+| File | Holds |
+|---|---|
+| `~/.aws/credentials` | access key and secret |
+| `~/.aws/config` | region and output format |
+
+Check that it works:
+
+```bash
+aws sts get-caller-identity
+```
+
+You should see your account ID and the ARN of your IAM user. Terraform reads the same credentials, so nothing goes into the `.tf` files.
+
+Use an IAM user, not the root account. It needs permission to manage S3, VPC and EC2.
+
+If you keep more than one AWS account, give this one its own profile:
+
+```bash
+aws configure --profile tf-mastery
+export AWS_PROFILE=tf-mastery
+```
+
+</details>
+
+<details>
+<summary><b>2. Create the state bucket (one time only)</b></summary>
 
 <br>
 
@@ -117,7 +245,7 @@ This folder keeps its state on disk on purpose. It can't store its state in a bu
 </details>
 
 <details>
-<summary><b>2. Fill in the variables</b></summary>
+<summary><b>3. Fill in the variables</b></summary>
 
 <br>
 
@@ -184,43 +312,6 @@ terraform init -backend-config=../../backend.hcl -reconfigure
 
 </details>
 
-## The web-server module
-
-```hcl
-module "web" {
-  source = "../../modules/web-server"
-
-  name          = "terraform-aws-mastery-dev"
-  vpc_id        = data.terraform_remote_state.network.outputs.vpc_id
-  subnet_id     = data.terraform_remote_state.network.outputs.public_subnet_ids[0]
-  instance_type = "t3.micro"
-  ssh_cidr      = var.ssh_cidr   # null = no SSH rule at all
-}
-```
-
-<details>
-<summary><b>Inputs and outputs</b></summary>
-
-<br>
-
-| Input | Required | Default | Notes |
-|---|---|---|---|
-| `name` | yes | | prefix for every resource name |
-| `vpc_id` | yes | | |
-| `subnet_id` | yes | | must be a public subnet |
-| `instance_type` | no | `t3.micro` | limited to small sizes to keep the bill low |
-| `ssh_cidr` | no | `null` | your IP as `x.x.x.x/32` |
-
-| Output | |
-|---|---|
-| `instance_id` | EC2 instance ID |
-| `public_ip` | public IP of the server |
-| `security_group_id` | ID of the security group |
-
-The module has no `provider` block. Region and credentials come from whoever calls it.
-
-</details>
-
 ## Notes and decisions
 
 <details>
@@ -259,14 +350,36 @@ Everything is small (`t3.micro`, no NAT gateway, no load balancer) and gets dest
 
 </details>
 
-## Progress
+## Terraform features used
 
-- [x] Foundations: infrastructure as code, how Terraform compares code, state and real AWS
-- [x] Setup: Terraform, AWS CLI, IAM user
-- [x] Core workflow and HCL basics
-- [x] Variables, outputs, locals and data sources
-- [x] A real network: VPC, subnets, routing, security groups, nginx
-- [x] State: S3 backend, locking, `state mv`, `import` and `removed` blocks, drift
-- [x] Modules: local and Registry modules, remote state, env-first layout
-- [ ] Pro practices: lifecycle rules, secrets, CI/CD with GitHub Actions
-- [ ] Terraform Associate exam
+Everything below is in the current code. Click a file to see it.
+
+| Feature | Where |
+|---|---|
+| S3 backend with native locking (`use_lockfile`) | [`dev/app/backend.tf`](dev/app/backend.tf) |
+| Partial backend config shared by every folder | [`backend.hcl.example`](backend.hcl.example) |
+| Local module with inputs and outputs | [`modules/web-server`](modules/web-server) |
+| Registry module pinned with `~>` | [`dev/network/main.tf`](dev/network/main.tf) |
+| Reading another state's outputs (`terraform_remote_state`) | [`dev/app/main.tf`](dev/app/main.tf) |
+| Data sources (`aws_ami`, `aws_caller_identity`) | [`modules/web-server/main.tf`](modules/web-server/main.tf), [`global/state-bootstrap/main.tf`](global/state-bootstrap/main.tf) |
+| Variable validation and optional inputs (`default = null`) | [`modules/web-server/variables.tf`](modules/web-server/variables.tf) |
+| `count` as an on/off switch for the SSH rule | [`modules/web-server/main.tf`](modules/web-server/main.tf) |
+| `user_data` with `user_data_replace_on_change` | [`modules/web-server/main.tf`](modules/web-server/main.tf) |
+| `default_tags` on the provider | [`dev/app/providers.tf`](dev/app/providers.tf) |
+| Heredoc output that prints a ready-to-use config file | [`global/state-bootstrap/outputs.tf`](global/state-bootstrap/outputs.tf) |
+| Committed `.terraform.lock.hcl` for repeatable provider versions | every root folder |
+
+<details>
+<summary><b>Earlier practice</b></summary>
+
+<br>
+
+Before this layout I had separate practice folders: a single S3 bucket, a single EC2 instance, a VPC built by hand, and state exercises (`state mv`, `import` and `removed` blocks, drift with `plan -refresh-only`). I removed them when I moved to the env-first layout. They're still in the git history.
+
+</details>
+
+### Coming next
+
+- [ ] `lifecycle` rules: `prevent_destroy`, `create_before_destroy`, `ignore_changes`
+- [ ] Secrets from SSM Parameter Store
+- [ ] CI/CD with GitHub Actions: plan on pull request, apply on merge, OIDC instead of access keys
