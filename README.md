@@ -64,7 +64,8 @@ Plus one shared S3 bucket in `global/` that stores the state of everything else.
 │   ├── network/
 │   └── app/
 ├── backend.hcl.example      # copy to backend.hcl
-└── CLAUDE.md                # my course plan and notes
+├── docs/learning-log.md     # what I covered and what comes next
+└── CLAUDE.md                # instructions for Claude Code
 ```
 
 Each folder is its own Terraform root with its own state. Breaking `app` can't touch `network`, and a plan in one folder only looks at that folder's resources.
