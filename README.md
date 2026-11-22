@@ -22,6 +22,7 @@ I started this repo to learn Terraform properly, not just copy snippets. I build
 - [System design](#system-design)
 - [Setup](#setup)
 - [Quick start](#quick-start)
+- [Command cheat sheet](#command-cheat-sheet)
 - [Notes and decisions](#notes-and-decisions)
 - [Terraform features used](#terraform-features-used)
 
@@ -370,6 +371,124 @@ terraform init -backend-config=../../backend.hcl -reconfigure
 
 </details>
 
+## Command cheat sheet
+
+Commands marked ★ are used in this repo.
+
+<details open>
+<summary><b>Everyday workflow</b></summary>
+
+<br>
+
+| Command | What it does |
+|---|---|
+| `terraform init -backend-config=../../backend.hcl` ★ | first command in any folder: downloads providers and modules, connects to the S3 state |
+| `terraform fmt -recursive` ★ | formats every `.tf` file in all subfolders |
+| `terraform validate` ★ | checks the code for mistakes, without calling AWS |
+| `terraform plan` ★ | shows what will change. Changes nothing |
+| `terraform apply` ★ | makes the changes after you type `yes` |
+| `terraform destroy` ★ | deletes everything this folder manages |
+| `terraform output` ★ | prints all outputs |
+| `terraform output -raw backend_hcl` ★ | prints one output as plain text, good for saving to a file |
+
+</details>
+
+<details>
+<summary><b>init options</b></summary>
+
+<br>
+
+| Command | When to use it |
+|---|---|
+| `terraform init -reconfigure` ★ | the backend changed and you don't need the old state, for example after switching buckets |
+| `terraform init -migrate-state` ★ | the backend changed and the old state must be copied over |
+| `terraform init -upgrade` | after changing a provider or module version |
+| `terraform init -backend=false` ★ | only to run `validate`, without touching any state |
+
+</details>
+
+<details>
+<summary><b>plan and apply options</b></summary>
+
+<br>
+
+| Command | What it does |
+|---|---|
+| `terraform plan -refresh-only` ★ | shows drift: what changed in AWS outside Terraform |
+| `terraform plan -destroy` ★ | shows what `destroy` would delete |
+| `terraform plan -out=tfplan` | saves the plan to a file |
+| `terraform apply tfplan` | applies exactly the saved plan, nothing more. This is how CI does it |
+| `terraform apply -replace="module.web.aws_instance.this"` | rebuilds one resource on purpose, for example to get a newer AMI |
+| `terraform apply -target=module.web` | changes only one part. For emergencies only |
+| `terraform apply -var="instance_type=t2.micro"` | sets a variable from the command line |
+| `terraform apply -auto-approve` | skips the `yes` prompt. Only in CI |
+
+</details>
+
+<details>
+<summary><b>State</b></summary>
+
+<br>
+
+| Command | What it does |
+|---|---|
+| `terraform state list` ★ | lists every resource in the state |
+| `terraform state show <address>` ★ | shows all details of one resource |
+| `terraform state mv <old> <new>` ★ | renames a resource in the state without touching AWS. A `moved` block does the same in code |
+| `terraform state rm <address>` | Terraform forgets a resource but leaves it in AWS. A `removed` block does the same in code |
+| `terraform import <address> <id>` | brings an existing AWS resource under Terraform. An `import` block does the same in code |
+| `terraform plan -generate-config-out=generated.tf` ★ | writes the code for resources in `import` blocks |
+| `terraform force-unlock <lock_id>` | removes a stuck lock after a crashed run |
+
+</details>
+
+<details>
+<summary><b>Workspaces</b></summary>
+
+<br>
+
+| Command | What it does |
+|---|---|
+| `terraform workspace list` | lists workspaces, `*` marks the current one |
+| `terraform workspace show` | prints the current workspace |
+| `terraform workspace new test` | creates a workspace (a new empty state) and switches to it |
+| `terraform workspace select default` | switches workspace |
+| `terraform workspace delete test` | deletes a workspace. You can't delete `default` |
+
+This repo uses folders for environments, not workspaces. See [Notes and decisions](#notes-and-decisions).
+
+</details>
+
+<details>
+<summary><b>Providers and other tools</b></summary>
+
+<br>
+
+| Command | What it does |
+|---|---|
+| `terraform version` ★ | Terraform and provider versions |
+| `terraform providers` | which providers each module needs |
+| `terraform providers lock -platform=windows_amd64 -platform=darwin_arm64 -platform=linux_amd64` | adds hashes for Windows, Mac and Linux to the lock file, so a mixed team gets no errors |
+| `terraform console` | try out expressions, for example `cidrsubnet("10.0.0.0/16", 8, 1)` |
+| `terraform graph` | prints the dependency graph |
+| `terraform show` | shows the current state, or a saved plan file, in readable form |
+
+</details>
+
+<details>
+<summary><b>AWS CLI</b></summary>
+
+<br>
+
+| Command | What it does |
+|---|---|
+| `aws configure` ★ | saves your access key and region |
+| `aws sts get-caller-identity` ★ | shows which account and user you're logged in as |
+| `aws s3 ls s3://<bucket> --recursive` | lists the state files in the bucket |
+| `aws ec2 describe-availability-zones --region ap-south-1` ★ | lists the AZs in Mumbai |
+
+</details>
+
 ## Notes and decisions
 
 <details>
@@ -425,6 +544,8 @@ Everything below is in the current code. Click a file to see it.
 | `user_data` with `user_data_replace_on_change` | [`modules/web-server/main.tf`](modules/web-server/main.tf) |
 | `default_tags` on the provider | [`dev/app/providers.tf`](dev/app/providers.tf) |
 | Heredoc output that prints a ready-to-use config file | [`global/state-bootstrap/outputs.tf`](global/state-bootstrap/outputs.tf) |
+| `lifecycle`: `create_before_destroy` + `name_prefix`, `ignore_changes` | [`modules/web-server/main.tf`](modules/web-server/main.tf) |
+| `lifecycle`: `prevent_destroy` on the state bucket | [`global/state-bootstrap/main.tf`](global/state-bootstrap/main.tf) |
 | Committed `.terraform.lock.hcl` for repeatable provider versions | every root folder |
 
 <details>
@@ -438,6 +559,5 @@ Before this layout I had separate practice folders: a single S3 bucket, a single
 
 ### Coming next
 
-- [ ] `lifecycle` rules: `prevent_destroy`, `create_before_destroy`, `ignore_changes`
 - [ ] Secrets from SSM Parameter Store
 - [ ] CI/CD with GitHub Actions: plan on pull request, apply on merge, OIDC instead of access keys
