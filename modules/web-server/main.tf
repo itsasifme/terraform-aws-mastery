@@ -19,8 +19,10 @@ resource "aws_security_group" "this" {
 
   tags = { Name = "${var.name}-web-sg" }
 
-  # Make the new group first, then delete the old one.
-  # AWS can't delete a group while the server still uses it.
+  # Works only when the group must be replaced, for example when you
+  # change the name or description (plan shows "forces replacement").
+  # Then it makes the new group first and deletes the old one last,
+  # because AWS can't delete a group while the server still uses it.
   lifecycle {
     create_before_destroy = true
   }
@@ -76,8 +78,9 @@ resource "aws_instance" "this" {
 
   tags = { Name = "${var.name}-web" }
 
-  # Amazon releases a new AMI almost every week. Without this, Terraform
-  # would replace the server each time. We update it ourselves when we want.
+  # Works on every plan. Amazon releases a new AMI almost every week,
+  # and without this Terraform would replace the server each time.
+  # To update the server yourself: terraform apply -replace=<address>
   lifecycle {
     ignore_changes = [ami]
   }

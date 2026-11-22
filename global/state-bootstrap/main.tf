@@ -11,8 +11,9 @@ resource "aws_s3_bucket" "state" {
 
   tags = { Name = "terraform-state" }
 
-  # Never delete this bucket. It holds every state file.
-  # To remove it on purpose, delete this block first.
+  # Works only when a plan wants to delete this bucket (destroy, or a
+  # change that forces replacement). The plan stops with an error.
+  # The bucket holds every state file. To remove it, delete this block first.
   lifecycle {
     prevent_destroy = true
   }
