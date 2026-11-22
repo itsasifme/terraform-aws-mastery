@@ -8,9 +8,8 @@ terraform {
     }
   }
 
-  # No backend block on purpose: this folder creates the state bucket,
-  # so its own state can't live in that bucket yet (chicken and egg).
-  # It stays local. Companies keep this tiny and rarely touch it.
+  # No backend here. This folder makes the state bucket, so its own
+  # state can't be saved in that bucket. It stays on this computer.
 }
 
 provider "aws" {

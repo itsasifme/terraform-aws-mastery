@@ -1,4 +1,4 @@
-# Other folders read these through terraform_remote_state.
+# The app folder reads these with terraform_remote_state.
 output "vpc_id" {
   description = "ID of the VPC"
   value       = module.vpc.vpc_id

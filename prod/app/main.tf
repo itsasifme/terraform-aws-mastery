@@ -1,5 +1,5 @@
 # Read the outputs of prod/network from its state file in S3.
-# Unlike a backend block, a data source CAN use variables.
+# A data source can use variables. A backend block can't.
 data "terraform_remote_state" "network" {
   backend = "s3"
 
@@ -10,9 +10,9 @@ data "terraform_remote_state" "network" {
   }
 }
 
-# Same module as the other environments. Only the inputs differ.
+# Same module in every environment. Only the values change.
 module "web" {
-  source = "../../modules/web-server" # local module: a path, no version
+  source = "../../modules/web-server" # local module: just a path, no version
 
   name          = "terraform-aws-mastery-prod"
   vpc_id        = data.terraform_remote_state.network.outputs.vpc_id

@@ -1,4 +1,4 @@
-# Newest Amazon Linux 2023 image in the caller's region.
+# Get the latest Amazon Linux 2023 image.
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
@@ -11,16 +11,16 @@ data "aws_ami" "amazon_linux" {
 
 # ---------- Security group ----------
 resource "aws_security_group" "this" {
-  # name_prefix, not name: AWS adds a random suffix, so the old and the new
-  # group can exist at the same time during a replacement.
+  # AWS adds a random ending to this name. So the old and the new
+  # group can live together for a short time.
   name_prefix = "${var.name}-web-"
   description = "Web server: HTTP from anywhere, optional SSH"
   vpc_id      = var.vpc_id
 
   tags = { Name = "${var.name}-web-sg" }
 
-  # The server is still attached to the old group, so AWS refuses to delete it
-  # first. Build the new one, move the server over, then delete the old one.
+  # Make the new group first, then delete the old one.
+  # AWS can't delete a group while the server still uses it.
   lifecycle {
     create_before_destroy = true
   }
@@ -35,7 +35,7 @@ resource "aws_vpc_security_group_ingress_rule" "http" {
   to_port           = 80
 }
 
-# count as an on/off switch: 1 rule when ssh_cidr is set, 0 when it is null.
+# Make this rule only when ssh_cidr is set.
 resource "aws_vpc_security_group_ingress_rule" "ssh" {
   count = var.ssh_cidr == null ? 0 : 1
 
@@ -76,8 +76,8 @@ resource "aws_instance" "this" {
 
   tags = { Name = "${var.name}-web" }
 
-  # most_recent = true picks a newer AMI every time Amazon publishes one, and a
-  # new AMI means a new server. Ignore it: update the server on purpose instead.
+  # Amazon releases a new AMI almost every week. Without this, Terraform
+  # would replace the server each time. We update it ourselves when we want.
   lifecycle {
     ignore_changes = [ami]
   }

@@ -1,24 +1,24 @@
-# Who am I? Gives the AWS account ID, so the bucket name is unique without random_id.
+# Get the AWS account ID. We add it to the bucket name so the name is unique.
 data "aws_caller_identity" "current" {}
 
-# ---------- The bucket that will hold every folder's terraform.tfstate ----------
+# ---------- Bucket for all state files ----------
 resource "aws_s3_bucket" "state" {
   bucket = "${var.project_name}-tfstate-${data.aws_caller_identity.current.account_id}"
 
-  # Lab only, so the bucket can be emptied and removed at the very end.
-  # In a real company this is false.
+  # Lets us delete the bucket even if it has files. Only for this lab.
+  # In a real company, keep this false.
   force_destroy = true
 
   tags = { Name = "terraform-state" }
 
-  # Losing this bucket means losing every state file. Terraform refuses any
-  # plan that would delete it. To really remove it, delete this block first.
+  # Never delete this bucket. It holds every state file.
+  # To remove it on purpose, delete this block first.
   lifecycle {
     prevent_destroy = true
   }
 }
 
-# Keep every old version of each state file. If state gets broken, roll back.
+# Keep old versions of each state file, so we can go back if something breaks.
 resource "aws_s3_bucket_versioning" "state" {
   bucket = aws_s3_bucket.state.id
 
@@ -27,7 +27,7 @@ resource "aws_s3_bucket_versioning" "state" {
   }
 }
 
-# Encrypt files at rest. State can hold secrets in plain text.
+# Encrypt the files. State can have passwords in plain text.
 resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
   bucket = aws_s3_bucket.state.id
 
@@ -38,7 +38,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
   }
 }
 
-# Never let this bucket become public.
+# Never allow public access.
 resource "aws_s3_bucket_public_access_block" "state" {
   bucket = aws_s3_bucket.state.id
 

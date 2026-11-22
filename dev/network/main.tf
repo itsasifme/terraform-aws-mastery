@@ -1,7 +1,7 @@
-# Network for dev, built with the community VPC module from the Terraform Registry.
+# Network for dev. Uses the VPC module from the Terraform Registry.
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 6.0" # always pin Registry modules
+  version = "~> 6.0" # always set a version for Registry modules
 
   name = "terraform-aws-mastery-dev"
   cidr = "10.0.0.0/16"
@@ -10,5 +10,5 @@ module "vpc" {
   public_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
 
   map_public_ip_on_launch = true  # servers in public subnets get a public IP
-  enable_nat_gateway      = false # NAT costs money, and we have no private subnets
+  enable_nat_gateway      = false # NAT costs money and we have no private subnets
 }
