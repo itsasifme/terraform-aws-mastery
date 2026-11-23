@@ -441,6 +441,8 @@ Commands marked ★ are used in this repo.
 | `terraform plan -generate-config-out=generated.tf` ★ | writes the code for resources in `import` blocks |
 | `terraform force-unlock <lock_id>` | removes a stuck lock after a crashed run |
 
+After an import is applied, the `import` block has no effect. In a real project, delete `imports.tf` and clean up `generated.tf` into normal files. This repo keeps them with a comment, for learning.
+
 </details>
 
 <details>

@@ -45,6 +45,7 @@ terraform validate
 - Keep resources small (`t3.micro`, no NAT gateway). The AWS account is paid, so destroy after each session.
 - Modules have no `provider` block and use `>=` for provider versions.
 - Every folder has a README. Update it when the folder changes.
+- Keep `imports.tf` and `generated.tf` after an import, because this is a learning repo. Put a comment at the top: in a real project, delete them after the import is applied.
 
 ## Writing style
 

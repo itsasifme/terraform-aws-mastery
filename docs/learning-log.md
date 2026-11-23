@@ -98,6 +98,7 @@ Hands-on still to do:
 - `state list`, `state show`, `plan -refresh-only` for drift.
 - Old command vs new block: `state mv` → `moved`, `terraform import` → `import`, `state rm` → `removed`.
 - `import` + `plan -generate-config-out=generated.tf` writes the code for an existing resource.
+- After the import is applied, the `import` block does nothing. Real teams delete `imports.tf` and move the useful parts of `generated.tf` into normal files. In this repo we keep them, with a comment, so the lesson stays visible.
 - `removed { lifecycle { destroy = false } }`: Terraform forgets the resource but leaves it in AWS.
 - `force-unlock` removes a stuck lock.
 - Why teams need remote state even with CI: CI runners are temporary, plan and apply run on different machines, locking stops two applies at once.
