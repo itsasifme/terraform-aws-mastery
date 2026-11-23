@@ -35,7 +35,7 @@ For each environment (`dev`, `stag`, `prod`):
 | `network` | VPC, 3 public subnets (one per AZ), internet gateway, route table | [terraform-aws-modules/vpc](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws) |
 | `app` | Security group + EC2 running nginx | [`modules/web-server`](modules/web-server) (inputs and outputs in its README) |
 
-Plus one shared S3 bucket in `global/` that stores the state of everything else.
+Plus one S3 bucket, made by `bootstrap/`, that stores the state of everything else.
 
 | | dev | stag | prod |
 |---|---|---|---|
@@ -52,8 +52,8 @@ Plus one shared S3 bucket in `global/` that stores the state of everything else.
 .
 ├── modules/
 │   └── web-server/          # reusable: security group + EC2 + nginx
-├── global/
-│   └── state-bootstrap/     # S3 bucket for remote state (keeps its own state locally)
+├── bootstrap/               # S3 bucket for remote state (keeps its own state locally)
+├── global/                  # account-wide things like IAM (not tied to one env)
 ├── dev/
 │   ├── network/             # state key: dev/network/terraform.tfstate
 │   └── app/                 # state key: dev/app/terraform.tfstate
@@ -74,7 +74,7 @@ Each folder is its own Terraform root with its own state. Breaking `app` can't t
 
 | Folder | README |
 |---|---|
-| `global/state-bootstrap` | [create the state bucket](global/state-bootstrap) |
+| `bootstrap` | [create the state bucket](bootstrap) |
 | `modules/web-server` | [inputs, outputs, usage](modules/web-server) |
 | `dev`, `stag`, `prod` | [dev](dev) · [stag](stag) · [prod](prod): settings and apply order |
 | `<env>/network` | [dev](dev/network) · [stag](stag/network) · [prod](prod/network) |
@@ -137,7 +137,7 @@ The three VPCs are fully separate. No peering, no shared subnets. The IP ranges 
 
 ```mermaid
 flowchart LR
-    boot["global/state-bootstrap"] -->|creates| bucket[("S3 state bucket")]
+    boot["bootstrap"] -->|creates| bucket[("S3 state bucket")]
 
     subgraph dev["dev"]
         dnet["network"] -.->|vpc_id, subnet ids| dapp["app"]
@@ -350,8 +350,8 @@ After [setup](#setup), the full steps are in each folder's README. In short:
 
 | Step | Where | Command |
 |---|---|---|
-| 1. Create the state bucket (once) | [`global/state-bootstrap`](global/state-bootstrap) | `terraform init && terraform apply` |
-| 2. Write `backend.hcl` | same folder | `terraform output -raw backend_hcl > ../../backend.hcl` |
+| 1. Create the state bucket (once) | [`bootstrap`](bootstrap) | `terraform init && terraform apply` |
+| 2. Write `backend.hcl` | same folder | `terraform output -raw backend_hcl > ../backend.hcl` |
 | 3. Build the network | [`dev/network`](dev/network) | `terraform init -backend-config=../../backend.hcl && terraform apply` |
 | 4. Build the app | [`dev/app`](dev/app) | copy `terraform.tfvars.example`, then same as step 3 |
 | 5. Check it | browser | open the `website_url` output |
@@ -539,14 +539,14 @@ Everything below is in the current code. Click a file to see it.
 | Local module with inputs and outputs | [`modules/web-server`](modules/web-server) |
 | Registry module pinned with `~>` | [`dev/network/main.tf`](dev/network/main.tf) |
 | Reading another state's outputs (`terraform_remote_state`) | [`dev/app/main.tf`](dev/app/main.tf) |
-| Data sources (`aws_ami`, `aws_caller_identity`) | [`modules/web-server/main.tf`](modules/web-server/main.tf), [`global/state-bootstrap/main.tf`](global/state-bootstrap/main.tf) |
+| Data sources (`aws_ami`, `aws_caller_identity`) | [`modules/web-server/main.tf`](modules/web-server/main.tf), [`bootstrap/main.tf`](bootstrap/main.tf) |
 | Variable validation and optional inputs (`default = null`) | [`modules/web-server/variables.tf`](modules/web-server/variables.tf) |
 | `count` as an on/off switch for the SSH rule | [`modules/web-server/main.tf`](modules/web-server/main.tf) |
 | `user_data` with `user_data_replace_on_change` | [`modules/web-server/main.tf`](modules/web-server/main.tf) |
 | `default_tags` on the provider | [`dev/app/providers.tf`](dev/app/providers.tf) |
-| Heredoc output that prints a ready-to-use config file | [`global/state-bootstrap/outputs.tf`](global/state-bootstrap/outputs.tf) |
+| Heredoc output that prints a ready-to-use config file | [`bootstrap/outputs.tf`](bootstrap/outputs.tf) |
 | `lifecycle`: `create_before_destroy` + `name_prefix`, `ignore_changes` | [`modules/web-server/main.tf`](modules/web-server/main.tf) |
-| `lifecycle`: `prevent_destroy` on the state bucket | [`global/state-bootstrap/main.tf`](global/state-bootstrap/main.tf) |
+| `lifecycle`: `prevent_destroy` on the state bucket | [`bootstrap/main.tf`](bootstrap/main.tf) |
 | Committed `.terraform.lock.hcl` for repeatable provider versions | every root folder |
 
 <details>

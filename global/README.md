@@ -1,9 +1,10 @@
 # global
 
-Things that are shared by every environment and created only once per AWS account.
+Account-wide things that don't belong to one environment, for example IAM.
+"Global" here means "shared by all envs", not "an AWS global service".
 
 | Folder | What it does |
 |---|---|
-| [`state-bootstrap`](state-bootstrap) | S3 bucket that holds the state of every other folder |
+| (empty for now) | `iam/` comes next: account-level roles and policies |
 
-Apply this before any environment. Destroy it last.
+The state bucket is not here. It lives in [`bootstrap/`](../bootstrap) because it must exist before anything else and keeps its own state locally.

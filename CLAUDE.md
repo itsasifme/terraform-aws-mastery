@@ -14,7 +14,8 @@ Terraform on AWS, laid out the way real teams do it.
 
 ```
 modules/web-server/      reusable SG + EC2 + nginx
-global/state-bootstrap/  S3 state bucket (its own state stays local)
+bootstrap/               S3 state bucket (its own state stays local, run once first)
+global/                  account-wide things like IAM, not tied to one env
 dev/  stag/  prod/       each has network/ and app/
 ```
 

@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.11.0" # same as every other root folder
 
   required_providers {
     aws = {
@@ -18,7 +18,7 @@ provider "aws" {
   default_tags {
     tags = {
       Project   = var.project_name
-      Component = "state-bootstrap"
+      Component = "bootstrap"
       ManagedBy = "terraform"
     }
   }

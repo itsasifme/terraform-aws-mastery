@@ -34,5 +34,5 @@ AWS won't delete a VPC while a server is still inside it, which is why `app` goe
 
 ## Before you start
 
-- The state bucket exists ([`global/state-bootstrap`](../global/state-bootstrap))
+- The state bucket exists ([`bootstrap`](../bootstrap))
 - `backend.hcl` is in the repo root
