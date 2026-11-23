@@ -14,6 +14,10 @@ What I've covered so far, and what comes next. Goal: the Terraform Associate exa
 | 6 | State management | ✅ Done |
 | 7 | Modules and repo layout | ✅ Done |
 | 8 | Pro practices | 📖 In progress |
+| 9 | Real-world patterns | ⏳ Planned |
+| 10 | Team-scale CI/CD and governance | ⏳ Planned |
+| 11 | Platform and leadership | ⏳ Planned |
+| 12 | Exam prep | ⏳ Planned |
 
 ### Where I am now
 
@@ -25,16 +29,84 @@ Module 8, part 1 (`lifecycle`). The code is in place:
 
 Hands-on still to do:
 
-1. `terraform plan -destroy` in `global/state-bootstrap` and see the error
+1. `terraform plan -destroy` in `bootstrap` and see the error
 2. Apply dev, change the SG description, and look for `+/-` in the plan
 3. Destroy dev (app first)
 
+### Pending commands (after the 2026-11-23 layout change)
+
+The code was changed but nothing was run yet. Do these in the next session, before the hands-on above.
+
+1. `tfenv use <version>` (1.11 or newer). tfenv has no version selected right now.
+2. `terraform fmt -check -recursive` and `terraform validate` in each changed folder.
+3. `aws s3 ls | grep tfstate`: does the state bucket still exist?
+   - **No bucket:** run `bootstrap` from the start (`init`, `apply`, then `terraform output -raw backend_hcl > ../backend.hcl`).
+   - **Bucket exists, but no local state:** bring it back with `import` blocks in `bootstrap/imports.tf`. Keep the file with a comment (see the import rule in CLAUDE.md).
+4. `terraform init` in `bootstrap/`. The folder moved, so its `.terraform/` folder is gone.
+5. `terraform plan` in `bootstrap/`. Expect only `~` updates: the `Component` tag changed from `state-bootstrap` to `bootstrap`.
+
+### Pending docs work
+
+No code here, only docs. Do it step by step, one folder at a time.
+
+1. Rewrite the folder READMEs in the same format as [`bootstrap/README.md`](../bootstrap/README.md) (done): contents, overview, requirements, what it creates, usage with `###` steps, inputs and outputs tables, cost, exam tips. Order:
+   - `global/`
+   - `modules/`, then `modules/web-server/`
+   - `dev/`, `dev/network/`, `dev/app/`
+   - `stag/` and `prod/` (copies of dev, so same shape)
+2. First ADR in `docs/adr/0001-repo-layout.md`: the 2026-11-23 layout decisions (see Notes, Module 7).
+
 ### Next
 
-- **Part 2:** secrets with SSM Parameter Store, `sensitive = true`
-- **Part 3:** CI/CD with GitHub Actions: plan on pull request, apply on merge, OIDC instead of access keys, tflint and trivy
+⭐ = likely on the Terraform Associate exam.
+
+#### Module 8: Pro practices
+
+_Parts 2 and 3. Part 1 is above._
+
+- **Part 2:** secrets with SSM Parameter Store, `sensitive = true` ⭐
+- **Part 3:** CI/CD basics with GitHub Actions: plan on pull request, apply on merge, OIDC instead of access keys, tflint and trivy
+
+#### Module 9: Real-world patterns
+
+_Writing the code like a team does._
+
+1. `dynamic` blocks, `optional()` in object types, `try()` ⭐ (`default_tags` is already used in every `providers.tf`)
+2. Testing and checks: `terraform test`, `check` blocks, `precondition` / `postcondition` ⭐
+3. Hands-on: make a resource by hand in the console, then bring it in with an `import` block ⭐
+4. IAM in `global/iam/`: `aws_iam_policy_document`, JSON files with `file()` / `templatefile()`, least privilege. KMS for encryption
+5. Sharing values between folders: `terraform_remote_state` vs data source lookup by name or tag ⭐
+6. Module versioning: git tags (`?ref=v1.2.0`), then promote dev → stag → prod. Today a module change hits every env at once ⭐
+
+#### Module 10: Team-scale CI/CD and governance
+
+_How a team ships safely._
+
+1. Same Terraform version for everyone: `.terraform-version` file
+2. Reusable workflows (`workflow_call`), plan only the changed folders (path filter), plan as a PR comment, pre-commit hooks
+3. Safe apply: apply the saved plan file (`plan -out`), manual approval with GitHub Environments, branch protection, `CODEOWNERS`. No local apply on stag or prod
+4. Drift detection: a scheduled `plan` that alerts on changes made by hand
+5. Policy as code: OPA / Conftest (Sentinel on HCP Terraform ⭐), for rules like "every resource needs tags"
+6. Cost: Infracost in PRs, AWS Budgets alerts
+7. Dependency updates: Renovate or Dependabot for providers and modules
+
+#### Module 11: Platform and leadership
+
+_What a Cloud Infra / DevOps lead owns._
+
+1. Multi-account: AWS Organizations, SCPs, IAM Identity Center (SSO), provider `assume_role` for cross-account access
+2. State security: bucket policy per env, KMS encryption, replication or backup of the state bucket
+3. Account baseline in `global/`: CloudTrail, AWS Config, GuardDuty, log retention, tag policy (`Owner`, `CostCenter`)
+4. Production network: private subnets, ALB + Auto Scaling Group across AZs, SSM Session Manager instead of SSH, VPC endpoints
+5. `data/` component (RDS): backups, `prevent_destroy`, deletion protection
+6. Team docs: ADRs (first one: the 2026-11-23 layout decisions), runbooks (stuck lock, lost state), break-glass access, onboarding
+7. Tooling choice: GitHub Actions vs Atlantis vs HCP Terraform vs Spacelift
+
+#### Module 12: Exam prep
+
+- HCP Terraform: workspaces, runs, Sentinel, private registry ⭐
 - Common mistakes and interview questions
-- 30-question mock test for the exam (HCP Terraform needs separate study)
+- 30-question mock test
 
 ## Notes
 
@@ -115,6 +187,15 @@ Hands-on still to do:
 - Workspaces: same code, separate state. In S3 the key gets an `env:/<name>/` prefix. `default` can't be deleted. `terraform.workspace` is an expression, not a command.
 - Real teams use folders per environment, not workspaces, so you can't apply to prod by mistake.
 - HCP Terraform workspaces are a different thing from CLI workspaces.
+
+**Layout decisions (2026-11-23)**
+
+- `bootstrap/` sits at the top, not in `global/`. Not because S3 is regional, but because its lifecycle is different: local state, runs once, before everything else.
+- `global/` means "shared by every env in the account" (for example IAM), not "AWS global service".
+- Split components by lifecycle, not by AWS service: `network/` (rarely changes), `data/` (stateful, protect it), `app/` (changes often). An app's SG and IAM role stay with the app.
+- Splitting every AWS service into its own folder creates many cross-state dependencies. Teams that do it often use Terragrunt.
+- IAM: account-level roles and policies go in `global/iam/`. A role that belongs to one app stays with that app.
+- DynamoDB locking is deprecated since Terraform 1.11. Use `use_lockfile = true`. Still know it for the exam.
 
 ### 8. Pro practices
 
